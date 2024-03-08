@@ -4,6 +4,7 @@ use std::{
 };
 
 use bytes::{BufMut, Bytes, BytesMut};
+use tokio::time::Duration;
 
 use super::error::ProtocolError;
 use crate::utf8;
@@ -581,6 +582,9 @@ pub struct Config {
     /// Consider decreasing this if the remote imposes a limit on the frame
     /// size. The default is 4MiB.
     pub(super) frame_size: usize,
+
+    /// The timeout for connecting to a remote.
+    pub connect_timeout: Option<Duration>,
 }
 
 impl Config {
@@ -594,12 +598,22 @@ impl Config {
 
         self
     }
+
+    /// Set the timeout for connecting to a remote.
+    /// The default is `None`.
+    #[must_use]
+    pub fn connect_timeout(mut self, timeout: Duration) -> Self {
+        self.connect_timeout = Some(timeout);
+
+        self
+    }
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             frame_size: 4 * 1024 * 1024,
+            connect_timeout: None,
         }
     }
 }

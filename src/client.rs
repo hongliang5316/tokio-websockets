@@ -246,7 +246,22 @@ impl<'a, R: Resolver> Builder<'a, R> {
         let port = default_port(uri).unwrap_or(80);
         let addr = self.resolver.resolve(host, port).await?;
 
-        let stream = TcpStream::connect(&addr).await?;
+        let stream;
+        match self.config.connect_timeout {
+            None => {
+                stream = TcpStream::connect(&addr).await?;
+            }
+            Some(connect_timeout) => {
+                stream =
+                    match tokio::time::timeout(connect_timeout, TcpStream::connect(&addr)).await {
+                        Ok(Ok(s)) => s,
+                        Ok(Err(e)) => return Err(Error::Connect(e)),
+                        Err(e) => {
+                            return Err(Error::Connect(io::Error::new(io::ErrorKind::TimedOut, e)))
+                        }
+                    };
+            }
+        }
 
         let stream = if uri.scheme_str() == Some("wss") {
             if let Some(connector) = self.connector {

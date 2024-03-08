@@ -16,6 +16,8 @@ pub enum Error {
     AlreadyClosed,
     /// DNS lookup failed.
     CannotResolveHost,
+    /// Connection attempt timed out.
+    Connect(std::io::Error),
     /// Attempted to connect a client to a remote without configured URI.
     #[cfg(feature = "client")]
     NoUriConfigured,
@@ -96,6 +98,7 @@ impl fmt::Display for Error {
                 f.write_str("attempted to send message after closing connection")
             }
             Error::CannotResolveHost => f.write_str("client DNS lookup failed"),
+            Error::Connect(e) => e.fmt(f),
             #[cfg(feature = "client")]
             Error::NoUriConfigured => f.write_str("client has no URI configured"),
             Error::Protocol(e) => e.fmt(f),
@@ -131,6 +134,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::AlreadyClosed | Error::CannotResolveHost | Error::PayloadTooLong { .. } => None,
+            Error::Connect(e) => Some(e),
             #[cfg(feature = "client")]
             Error::NoUriConfigured => None,
             #[cfg(all(
